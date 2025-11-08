@@ -142,7 +142,13 @@ class Git(VersionControl):
             pass
 
         refs = {}
-        for line in output.strip().splitlines():
+        # NOTE: We do not use splitlines here since that would split on other
+        #       unicode separators, which can be maliciously used to install a
+        #       different revision.
+        for line in output.strip().split("\n"):
+            line = line.rstrip("\r")
+            if not line:
+                continue
             try:
                 sha, ref = line.split()
             except ValueError:

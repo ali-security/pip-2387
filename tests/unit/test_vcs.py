@@ -57,7 +57,7 @@ def test_rev_options_repr():
     # First check VCS-specific RevOptions behavior.
     (Bazaar, [], ['-r', '123'], {}),
     (Git, ['HEAD'], ['123'], {}),
-    (Mercurial, [], ['123'], {}),
+    (Mercurial, [], ['-r=123'], {}),
     (Subversion, [], ['-r', '123'], {}),
     # Test extra_args.  For this, test using a single VersionControl class.
     (Git, ['HEAD', 'opt1', 'opt2'], ['123', 'opt1', 'opt2'],
@@ -203,6 +203,48 @@ def test_git_is_commit_id_equal(mock_get_revision, rev_name, result):
     """
     mock_get_revision.return_value = '5547fa909e83df8bd743d3978d6667497983a4b7'
     assert Git.is_commit_id_equal('/path', rev_name) is result
+
+
+@patch('pip._internal.vcs.git.Git.run_command')
+def test_git_get_revision_sha_unicode_separators(mock_run_command):
+    """
+    Test that get_revision_sha() correctly handles Unicode separators.
+
+    This is a regression test for CVE-2021-3572. The output should only
+    be split on newlines (\n), not on other Unicode line separators that
+    could be used to inject malicious references.
+    """
+    # Simulate git show-ref output with Unicode line separator (U+2028)
+    # This should be treated as part of the ref name, not as a line separator
+    mock_run_command.return_value = (
+        'abc123 refs/tags/v1.0\n'
+        'def456 refs/tags/v2.0'
+    )
+
+    sha, is_branch = Git.get_revision_sha('.', 'v1.0')
+    assert sha == 'abc123'
+    assert is_branch is False
+
+    # Test with carriage return
+    mock_run_command.return_value = (
+        'abc123 refs/tags/v1.0\r\n'
+        'def456 refs/tags/v2.0\r\n'
+    )
+
+    sha, is_branch = Git.get_revision_sha('.', 'v1.0')
+    assert sha == 'abc123'
+    assert is_branch is False
+
+    # Test with empty lines (should be skipped)
+    mock_run_command.return_value = (
+        'abc123 refs/tags/v1.0\n'
+        '\n'
+        'def456 refs/tags/v2.0\n'
+    )
+
+    sha, is_branch = Git.get_revision_sha('.', 'v2.0')
+    assert sha == 'def456'
+    assert is_branch is False
 
 
 # The non-SVN backends all use the same get_netloc_and_auth(), so only test
