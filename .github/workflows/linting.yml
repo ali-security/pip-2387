@@ -3,9 +3,7 @@ name: Linting
 on:
   push:
   pull_request:
-  schedule:
   # Run every Friday at 18:02 UTC
-  - cron: 2 18 * * 5
 
 jobs:
   lint:
@@ -24,13 +22,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
-      uses: actions/setup-python@v1
+      uses: MatteoH2O1999/setup-python@v4
       with:
         python-version: 3.8
 
     # Setup Caching
     - name: pip cache
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('tools/requirements/tests.txt') }}-${{ hashFiles('tools/requirements/docs.txt') }}-${{ hashFiles('tox.ini') }}
@@ -41,7 +39,7 @@ jobs:
     - name: Set PY (for pre-commit cache)
       run: echo "::set-env name=PY::$(python -c 'import hashlib, sys;print(hashlib.sha256(sys.version.encode()+sys.executable.encode()).hexdigest())')"
     - name: pre-commit cache
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pre-commit
         key: pre-commit|2020-02-14|${{ env.PY }}|${{ hashFiles('.pre-commit-config.yaml') }}
